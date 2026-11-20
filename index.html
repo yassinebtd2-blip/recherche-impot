@@ -1,0 +1,925 @@
+<!DOCTYPE html>
+<html lang="fr-CA">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Recherche impôt fédéral et Québec</title>
+<link rel="preconnect" href="https://fonts.googleapis.com">
+<link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+<link href="https://fonts.googleapis.com/css2?family=IBM+Plex+Mono:wght@400;500&family=IBM+Plex+Sans:wght@400;500;600&family=IBM+Plex+Serif:wght@500;600&display=swap" rel="stylesheet">
+<style>
+
+:root {
+  /* Outil de travail : barre d'onglets, colonne de recherche, fiches à déplier. Vert = accent, bleu = particuliers, ambre = sociétés. */
+  --bg: #f4f5f7;
+  --surface: #ffffff;
+  --ink: #1b2330;
+  --muted: #5b6575;
+  --line: #dde1e7;
+  --accent: #1f5f4b;
+  --accent-soft: #e3f0ea;
+  --qc: #8a2d3b;
+  --qc-soft: #f6e8ea;
+  --warn: #8a5a00;
+  --warn-soft: #fbf1dc;
+  --ok: #1f6b45;
+  --font-display: "IBM Plex Serif", Georgia, serif;
+  --font-body: "IBM Plex Sans", "Segoe UI", system-ui, sans-serif;
+  --font-mono: "IBM Plex Mono", Consolas, monospace;
+  color-scheme: light;
+}
+@media (prefers-color-scheme: dark) {
+  :root:not([data-theme="light"]) {
+    --bg: #12161d; --surface: #1a2029; --ink: #e5e9ef; --muted: #9aa4b3; --line: #2c3440;
+    --accent: #74c7a5; --accent-soft: #19302a; --qc: #e39aa6; --qc-soft: #3a2228;
+    --warn: #e6b65c; --warn-soft: #3a2f18; --ok: #6fcf9b; color-scheme: dark;
+  }
+}
+:root[data-theme="dark"] {
+  --bg: #12161d; --surface: #1a2029; --ink: #e5e9ef; --muted: #9aa4b3; --line: #2c3440;
+  --accent: #74c7a5; --accent-soft: #19302a; --qc: #e39aa6; --qc-soft: #3a2228;
+  --warn: #e6b65c; --warn-soft: #3a2f18; --ok: #6fcf9b; color-scheme: dark;
+}
+* { box-sizing: border-box; }
+html, body { margin: 0; }
+body { background: var(--bg); color: var(--ink); font: 15px/1.55 var(--font-body); }
+a { color: var(--accent); }
+a:focus-visible, button:focus-visible, input:focus-visible, select:focus-visible, textarea:focus-visible, summary:focus-visible {
+  outline: 2px solid var(--accent); outline-offset: 2px;
+}
+header { background: var(--surface); border-bottom: 1px solid var(--line); }
+.wrap { max-width: 1080px; margin: 0 auto; padding: 0 20px; }
+.top { display: flex; flex-wrap: wrap; align-items: baseline; justify-content: space-between; gap: 8px 20px; padding: 18px 0 10px; }
+h1 { font: 600 1.45rem/1.2 var(--font-display); margin: 0; text-wrap: balance; }
+.stamp { color: var(--muted); font-size: .82rem; }
+nav { display: flex; gap: 4px; overflow-x: auto; }
+nav a { padding: 10px 14px; text-decoration: none; color: var(--muted); border-bottom: 2px solid transparent; white-space: nowrap; font-weight: 500; }
+nav a[aria-current="page"] { color: var(--ink); border-bottom-color: var(--accent); }
+main { padding: 24px 0 60px; }
+section[hidden] { display: none; }
+h2 { font: 600 1.2rem/1.3 var(--font-display); margin: 0 0 6px; text-wrap: balance; }
+.lede { color: var(--muted); margin: 0 0 18px; max-width: 70ch; }
+.searchbar { display: flex; flex-wrap: wrap; gap: 10px; margin-bottom: 12px; }
+input[type="search"], input[type="text"], input[type="number"], select, textarea {
+  font: inherit; color: var(--ink); background: var(--surface); border: 1px solid var(--line); border-radius: 6px; padding: 10px 12px;
+}
+#q { flex: 1 1 320px; font-size: 1rem; }
+.chips { display: flex; flex-wrap: wrap; gap: 6px; margin-bottom: 18px; }
+.chip { font: inherit; font-size: .85rem; border: 1px solid var(--line); background: var(--surface); color: var(--ink); border-radius: 999px; padding: 4px 12px; cursor: pointer; }
+.chip[aria-pressed="true"] { background: var(--accent); border-color: var(--accent); color: var(--surface); }
+.count { color: var(--muted); font-size: .85rem; margin-bottom: 10px; }
+.cards { display: grid; gap: 10px; }
+details.card { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; }
+details.card > summary { list-style: none; cursor: pointer; padding: 14px 16px; display: grid; gap: 4px; }
+details.card > summary::-webkit-details-marker { display: none; }
+.card-head { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+.card-title { font-weight: 600; font-size: 1.02rem; }
+.card-sum { color: var(--muted); font-size: .9rem; max-width: 80ch; }
+.tag { font-size: .72rem; font-weight: 600; letter-spacing: .03em; padding: 2px 8px; border-radius: 4px; }
+.tag.tps { background: var(--accent-soft); color: var(--accent); }
+.tag.tvq { background: var(--qc-soft); color: var(--qc); }
+.tag.new { background: var(--warn-soft); color: var(--warn); }
+.tag.cat { background: transparent; color: var(--muted); border: 1px solid var(--line); font-weight: 500; }
+.card-body { padding: 0 16px 16px; border-top: 1px solid var(--line); }
+.card-body ul { margin: 12px 0; padding-left: 20px; max-width: 80ch; }
+.card-body li { margin: 4px 0; }
+.refs { display: flex; flex-wrap: wrap; gap: 6px; margin: 10px 0; }
+.ref { font: .8rem var(--font-mono); background: var(--bg); border: 1px solid var(--line); border-radius: 4px; padding: 2px 8px; }
+.links { display: flex; flex-wrap: wrap; gap: 6px 16px; font-size: .88rem; }
+.card-actions { margin-top: 12px; }
+button.btn { font: inherit; font-weight: 500; border: 1px solid var(--accent); background: var(--accent); color: var(--surface); border-radius: 6px; padding: 9px 16px; cursor: pointer; }
+button.btn.ghost { background: transparent; color: var(--accent); }
+button.btn:disabled { opacity: .55; cursor: default; }
+mark { background: var(--warn-soft); color: inherit; padding: 0 1px; }
+.empty { padding: 24px; text-align: center; color: var(--muted); background: var(--surface); border: 1px dashed var(--line); border-radius: 8px; }
+/* Assistant */
+.ask { display: grid; gap: 10px; }
+textarea { width: 100%; min-height: 110px; resize: vertical; }
+.ask-row { display: flex; flex-wrap: wrap; gap: 10px; align-items: center; }
+.examples { display: flex; flex-wrap: wrap; gap: 6px; }
+.notice { border-left: 3px solid var(--warn); background: var(--warn-soft); padding: 10px 14px; border-radius: 0 6px 6px 0; font-size: .9rem; max-width: 80ch; }
+.answer { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 6px 20px 14px; margin-top: 16px; max-width: 860px; }
+.answer h3 { font: 600 1rem var(--font-display); margin: 16px 0 4px; }
+.answer p, .answer li { max-width: 78ch; }
+.answer code { font: .85em var(--font-mono); background: var(--bg); padding: 1px 5px; border-radius: 3px; }
+.ctx { font-size: .82rem; color: var(--muted); margin-top: 10px; }
+.history { margin-top: 24px; }
+.history h3 { font-size: .9rem; color: var(--muted); font-weight: 600; margin: 0 0 6px; }
+.history button { font: inherit; font-size: .88rem; background: none; border: none; color: var(--accent); cursor: pointer; padding: 3px 0; text-align: left; display: block; }
+/* Calculateur */
+.calc { display: grid; grid-template-columns: minmax(260px, 340px) 1fr; gap: 20px; align-items: start; }
+@media (max-width: 720px) { .calc { grid-template-columns: 1fr; } }
+.panel { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 16px; display: grid; gap: 12px; }
+label { font-size: .85rem; font-weight: 600; display: grid; gap: 4px; }
+.seg { display: flex; border: 1px solid var(--line); border-radius: 6px; overflow: hidden; }
+.seg button { flex: 1; font: inherit; font-size: .88rem; padding: 8px; background: var(--surface); color: var(--ink); border: 0; cursor: pointer; }
+.seg button[aria-pressed="true"] { background: var(--accent); color: var(--surface); }
+table { border-collapse: collapse; width: 100%; font-variant-numeric: tabular-nums; }
+th, td { text-align: left; padding: 9px 12px; border-bottom: 1px solid var(--line); }
+th { font-size: .8rem; color: var(--muted); font-weight: 600; }
+td.num, th.num { text-align: right; }
+tr.total td { font-weight: 600; border-bottom: 0; border-top: 2px solid var(--ink); }
+.tablebox { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; overflow-x: auto; }
+.note { color: var(--muted); font-size: .85rem; max-width: 80ch; }
+/* Nouveautés */
+.timeline { display: grid; gap: 10px; }
+.tl { display: grid; grid-template-columns: 130px 1fr; gap: 14px; background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; }
+@media (max-width: 560px) { .tl { grid-template-columns: 1fr; gap: 4px; } }
+.tl time { font: 500 .88rem var(--font-mono); color: var(--muted); }
+.tl p { margin: 4px 0 0; max-width: 78ch; }
+.srcgrid { display: grid; grid-template-columns: repeat(auto-fill, minmax(280px, 1fr)); gap: 10px; }
+.src { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 14px 16px; display: grid; gap: 4px; }
+.src a { font-weight: 600; }
+.src span { color: var(--muted); font-size: .88rem; }
+footer { color: var(--muted); font-size: .8rem; border-top: 1px solid var(--line); padding: 16px 0 30px; }
+@media (prefers-reduced-motion: reduce) { * { transition: none !important; animation: none !important; } }
+
+.tag.soc { background: var(--warn-soft); color: var(--warn); }
+.tag.part { background: var(--accent-soft); color: var(--accent); }
+.kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 10px; margin-bottom: 12px; }
+.kpi { background: var(--surface); border: 1px solid var(--line); border-radius: 8px; padding: 10px 14px; }
+.kpi span { display: block; font-size: .78rem; color: var(--muted); }
+.kpi strong { font: 600 1.15rem var(--font-body); font-variant-numeric: tabular-nums; }
+.check { display: flex; align-items: center; gap: 8px; font-weight: 500; }
+.check input { width: 16px; height: 16px; }
+h3.sub { font: 600 1rem var(--font-display); margin: 18px 0 8px; }
+.calc[hidden] { display: none; }
+.calc > * { min-width: 0; }
+.panel input, .panel select { width: 100%; min-width: 0; }
+.panel .check input { width: 16px; }
+</style>
+</head>
+<body>
+<header>
+  <div class="wrap">
+    <div class="top">
+      <h1>Recherche impôt fédéral et Québec</h1>
+      <span class="stamp" id="stamp">Contenu à jour au 20 novembre 2026</span>
+    </div>
+    <nav aria-label="Sections">
+      <a href="#recherche" data-view="recherche">Recherche</a>
+      <a href="#assistant" data-view="assistant">Assistant</a>
+      <a href="#calculateur" data-view="calculateur">Calculateur</a>
+      <a href="#taux" data-view="taux">Taux</a>
+      <a href="#nouveautes" data-view="nouveautes">Nouveautés</a>
+      <a href="#sources" data-view="sources">Sources officielles</a>
+    </nav>
+  </div>
+</header>
+<div id="redirect-banner" class="wrap" hidden>
+  <div class="notice" style="margin-top:14px">Ouverture de la version en ligne à jour… <a href="#local" id="stay-local">Rester sur cette copie locale</a></div>
+</div>
+<main class="wrap">
+  <section id="v-recherche">
+    <h2>Fiches de recherche</h2>
+    <p class="lede">Tapez un mot-clé (ex. « REER », « dividendes », « résidence principale », « 125 ») ou filtrez par thème. Chaque fiche renvoie aux articles de la Loi de l'impôt sur le revenu (LIR), de la Loi sur les impôts du Québec (LI) et aux pages officielles.</p>
+    <div class="searchbar">
+      <input type="search" id="q" placeholder="Rechercher un sujet, un article, un mot-clé…" aria-label="Rechercher dans les fiches">
+      <select id="regime" aria-label="Contribuable">
+        <option value="">Particuliers et sociétés</option>
+        <option value="part">Particuliers</option>
+        <option value="soc">Sociétés</option>
+      </select>
+    </div>
+    <div class="chips" id="chips"></div>
+    <div class="count" id="count"></div>
+    <div class="cards" id="cards"></div>
+  </section>
+
+  <section id="v-assistant" hidden>
+    <h2>Assistant de recherche</h2>
+    <p class="lede">Posez une question précise. L'assistant s'appuie sur les fiches pertinentes, distingue le fédéral et le Québec et cite les articles à consulter.</p>
+    <div class="notice" id="ai-notice">Les réponses sont un point de départ de recherche, pas un avis professionnel. Vérifiez toujours les articles cités et les positions de l'ARC et de Revenu Québec.</div>
+    <div class="ask" style="margin-top:14px">
+      <label for="ask-q">Votre question</label>
+      <textarea id="ask-q" placeholder="Ex. : Je suis travailleur autonome au Québec. Puis-je déduire une partie de mon loyer pour mon bureau à domicile ?"></textarea>
+      <div class="examples" id="examples"></div>
+      <div class="ask-row">
+        <button class="btn" id="ask-btn" type="button">Rechercher la réponse</button>
+        <button class="btn ghost" id="ask-stop" type="button" hidden>Arrêter</button>
+        <span class="note" id="ask-status"></span>
+      </div>
+    </div>
+    <div id="answer"></div>
+    <div class="history" id="history"></div>
+  </section>
+
+  <section id="v-calculateur" hidden>
+    <h2>Calculateur d'impôt 2026</h2>
+    <p class="lede">Estimation simplifiée. Particulier : seul le montant personnel de base est pris en compte (pas les cotisations RRQ, RQAP et AE, ni les autres crédits). Société : SPCC, taux de la partie I et de la LI, sans les crédits d'impôt ni les impôts remboursables.</p>
+    <div class="seg" role="group" aria-label="Type de contribuable" style="max-width:420px;margin-bottom:16px">
+      <button type="button" id="mode-part" aria-pressed="true">Particulier</button>
+      <button type="button" id="mode-soc" aria-pressed="false">Société (SPCC)</button>
+    </div>
+    <div id="calc-part" class="calc">
+      <div class="panel">
+        <label for="p-rev">Revenu imposable 2026 ($)
+          <input type="number" id="p-rev" min="0" step="100" value="85000">
+        </label>
+        <label class="check"><input type="checkbox" id="p-qc" checked> Résident du Québec au 31 décembre</label>
+        <p class="note">Hors Québec, l'impôt provincial n'est pas calculé ; seul l'impôt fédéral s'affiche.</p>
+      </div>
+      <div>
+        <div class="kpis" id="p-kpis"></div>
+        <div class="tablebox"><table id="p-out"></table></div>
+        <h3 class="sub">Taux marginaux à ce revenu</h3>
+        <div class="tablebox"><table id="p-marg"></table></div>
+        <p class="note" style="margin-top:8px">Dividendes : taux sur le dividende réellement reçu, majoration et crédit compris. Le crédit québécois pour dividendes non déterminés passera de 3,42 % à 2,69 % pour les dividendes reçus après le 31 décembre 2026.</p>
+      </div>
+    </div>
+    <div id="calc-soc" class="calc" hidden>
+      <div class="panel">
+        <label for="s-ent">Revenu d'entreprise exploitée activement ($)
+          <input type="number" id="s-ent" min="0" step="1000" value="650000">
+        </label>
+        <label for="s-plaf">Plafond des affaires ($)
+          <input type="number" id="s-plaf" min="0" max="500000" step="1000" value="500000">
+        </label>
+        <label for="s-plac">Revenu de placement ($)
+          <input type="number" id="s-plac" min="0" step="1000" value="0">
+        </label>
+        <label for="s-annee">Année d'imposition de la société
+          <select id="s-annee">
+            <option value="new">Commence après le 29 avril 2026 (DPE Québec : 2,2 %)</option>
+            <option value="old">Commence au plus tard le 29 avril 2026 (DPE Québec : 3,2 %)</option>
+          </select>
+        </label>
+        <label class="check"><input type="checkbox" id="s-heures" checked> Au moins 5 500 heures rémunérées (ou société des secteurs primaire et manufacturier)</label>
+        <p class="note">Le plafond des affaires est partagé entre sociétés associées et réduit si le revenu de placement total ajusté dépasse 50 000 $ (fédéral).</p>
+      </div>
+      <div>
+        <div class="kpis" id="s-kpis"></div>
+        <div class="tablebox"><table id="s-out"></table></div>
+      </div>
+    </div>
+  </section>
+
+  <section id="v-taux" hidden>
+    <h2>Taux et paramètres 2026</h2>
+    <p class="lede">Particuliers et sociétés, fédéral et Québec.</p>
+    <h3 class="sub">Particuliers : tables d'imposition</h3>
+    <div class="tablebox"><table id="t-part"></table></div>
+    <h3 class="sub">Paramètres clés</h3>
+    <div class="tablebox"><table id="t-param"></table></div>
+    <h3 class="sub">Sociétés (SPCC)</h3>
+    <div class="tablebox"><table id="t-soc"></table></div>
+    <p class="note" style="margin-top:10px">Taux fédéral des particuliers : LIR art. 117(2). Abattement du Québec : 16,5 % de l'impôt fédéral de base (LIR art. 120(2) pour 3 % et Loi sur les arrangements fiscaux entre le gouvernement fédéral et les provinces, art. 27, pour 13,5 %). Taux du Québec : LI art. 750.</p>
+  </section>
+
+  <section id="v-nouveautes" hidden>
+    <h2>Nouveautés 2025-2026</h2>
+    <p class="lede">Changements adoptés, en vigueur ou proposés. Une mesure « proposée » n'est pas encore loi.</p>
+    <div class="timeline" id="timeline"></div>
+  </section>
+
+  <section id="v-sources" hidden>
+    <h2>Sources officielles</h2>
+    <p class="lede">Lois, publications administratives et jurisprudence. Les liens s'ouvrent dans un nouvel onglet.</p>
+    <div class="srcgrid" id="srcgrid"></div>
+  </section>
+</main>
+<footer>
+  <div class="wrap">Outil de recherche personnel. Le contenu résume la législation et les positions administratives et peut contenir des simplifications ; il ne constitue pas un avis professionnel. Consultez toujours le texte officiel des lois.</div>
+</footer>
+
+<script>
+/* ================= VERSION ================= */
+// Date de la dernière modification du contenu (mise à jour par la tâche hebdomadaire, seulement s'il y a un vrai changement).
+const DERNIERE_MISE_A_JOUR = "20 novembre 2026";
+const URL_EN_LIGNE = "https://yassinebtd2-blip.github.io/recherche-impot/";
+const URL_CLAUDE = "https://claude.ai/artifact/FDBTtnRss9pWt1MCptVSar";
+
+/* ================= DONNÉES ================= */
+const L = {
+  lir: "https://laws-lois.justice.gc.ca/fra/lois/i-3.3/",
+  li: "https://www.legisquebec.gouv.qc.ca/fr/document/lc/I-3",
+  laf: "https://www.legisquebec.gouv.qc.ca/fr/document/lc/A-6.002",
+  arcTaux: "https://www.canada.ca/fr/agence-revenu/services/impot/particuliers/taux-imposition-tranches-revenu/annee-en-cours.html",
+  arcPlafonds: "https://www.canada.ca/fr/agence-revenu/services/impot/administrateurs-regimes-enregistres/fesp/plafonds-cd-reer-rpdb-celi-mgap.html",
+  rqTaux: "https://www.revenuquebec.ca/fr/citoyens/declaration-de-revenus/produire-votre-declaration-de-revenus/taux-dimposition/",
+  rqParam2026: "https://www.revenuquebec.ca/fr/entreprises/retenues-a-la-source-et-cotisations-de-lemployeur/employeur-principaux-changements-2026/",
+  rqDpe: "https://www.revenuquebec.ca/fr/salle-de-presse/nouvelles-fiscales/details/2026-05-04/hausse-du-taux-de-la-deduction-pour-petite-entreprise/",
+  finQcBul20263: "https://cdn-contenu.quebec.ca/cdn-contenu/adm/min/finances/publications-adm/Bulletins/FR/BULFR_2026-3.pdf",
+  finQcParam: "https://cdn-contenu.quebec.ca/cdn-contenu/adm/min/finances/publications-adm/parametres/AUTFR_RegimeImpot2026.pdf",
+  finCanTaux14: "https://www.canada.ca/fr/ministere-finances/services/publications/rapport-incidence-reduction-taux-imposition-marginal-premiere-tranche-revenu-particuliers-credits-impot-non-remboursables.html",
+  pmGains: "https://www.pm.gc.ca/fr/nouvelles/communiques/2025/03/21/premier-ministre-mark-carney-annule-la-hausse-proposee-de-impot-gains-capital",
+  rqNouvelles: "https://www.revenuquebec.ca/fr/salle-de-presse/nouvelles-fiscales/",
+  bncBudget2026: "https://www.bnc.ca/particuliers/conseils/vision-leaders/budget-federal-2026.html",
+  rqOpposition: "https://www.revenuquebec.ca/fr/une-mission-des-actions/vous-informer-de-vos-droits/vos-recours/opposition/comment-presenter-votre-avis-dopposition/",
+  finQcPub: "https://www.quebec.ca/gouvernement/ministeres-organismes/finances/publications",
+  canlii: "https://www.canlii.org/fr/",
+  cci: "https://www.tcc-cci.gc.ca/fr"
+};
+
+const FICHES = [
+ { id:"tables", titre:"Tables d'imposition des particuliers 2026", regimes:["part"], cat:"Taux et crédits",
+   mots:"taux tranches paliers 14 % 20,5 % 26 % 29 % 33 % 19 % 24 % 25,75 % 58 523 54 345 marginal combiné 53,31 %",
+   resume:"Fédéral : de 14 % à 33 %. Québec : de 14 % à 25,75 %. Taux marginal combiné maximal au Québec : 53,31 %.",
+   points:[
+     "Fédéral 2026 : 14 % jusqu'à 58 523 $ ; 20,5 % jusqu'à 117 045 $ ; 26 % jusqu'à 181 440 $ ; 29 % jusqu'à 258 482 $ ; 33 % au-delà.",
+     "Le taux de la première tranche fédérale est passé de 15 % à 14,5 % le 1er juillet 2025, puis à 14 % pour toute l'année 2026.",
+     "Québec 2026 : 14 % jusqu'à 54 345 $ ; 19 % jusqu'à 108 680 $ ; 24 % jusqu'à 132 245 $ ; 25,75 % au-delà. Indexation de 2,05 %.",
+     "Pour un résident du Québec, l'impôt fédéral de base est réduit de l'abattement du Québec de 16,5 % : le taux fédéral effectif maximal est donc de 27,56 %.",
+     "Taux marginal combiné le plus élevé au Québec (revenu ordinaire) : 53,31 % au-delà de 258 482 $."
+   ],
+   refs:["LIR art. 117(2)","LIR art. 117.1 (indexation)","LI art. 750"],
+   liens:[["Taux fédéraux 2026 (ARC)",L.arcTaux],["Taux d'imposition (Revenu Québec)",L.rqTaux]] },
+
+ { id:"credits", titre:"Montant personnel de base et crédits non remboursables", regimes:["part"], cat:"Taux et crédits",
+   mots:"montant personnel de base mpb crédit non remboursable 16 452 18 952 âge 9 208 conjoint personne à charge 14 829 réduction",
+   resume:"Fédéral : 16 452 $ (réduit à 14 829 $ pour les hauts revenus). Québec : 18 952 $. Les deux crédits se calculent à 14 %.",
+   points:[
+     "Fédéral 2026 : montant personnel de base de 16 452 $, soit un crédit de 2 303 $ au taux de 14 %. Il diminue graduellement lorsque le revenu net dépasse 181 440 $, jusqu'à 14 829 $ à 258 482 $ et plus.",
+     "Québec 2026 : montant personnel de base de 18 952 $, crédit au taux de 14 % (2 653 $).",
+     "Montant en raison de l'âge (fédéral, 65 ans et plus) : 9 208 $ en 2026, réduit selon le revenu.",
+     "Les crédits non remboursables réduisent l'impôt mais ne créent pas de remboursement ; au fédéral, ils se calculent au taux de la première tranche.",
+     "Au Québec, plusieurs montants (âge, personne vivant seule, revenus de retraite) sont regroupés et réduits selon le revenu familial."
+   ],
+   refs:["LIR art. 118(1)","LI art. 752.0.1","LI art. 752.0.0.1"],
+   liens:[["Taux fédéraux 2026 (ARC)",L.arcTaux],["Paramètres 2026 (Revenu Québec)",L.rqParam2026],["Indexation 2026 (Finances Québec)",L.finQcParam]] },
+
+ { id:"abattement", titre:"Abattement du Québec remboursable (16,5 %)", regimes:["part"], cat:"Taux et crédits",
+   mots:"abattement du québec 16,5 % remboursable impôt fédéral de base résident québec 3 % 13,5 %",
+   resume:"Les résidents du Québec réduisent leur impôt fédéral de base de 16,5 %, en contrepartie du retrait du Québec de certains programmes fédéraux.",
+   points:[
+     "S'applique au particulier qui réside au Québec le 31 décembre (ou qui y gagne un revenu d'entreprise).",
+     "Calcul : 16,5 % de l'impôt fédéral de base, après les crédits non remboursables.",
+     "Fondement : 3 % en vertu du par. 120(2) de la LIR et 13,5 % en vertu de l'art. 27 de la Loi sur les arrangements fiscaux entre le gouvernement fédéral et les provinces.",
+     "Il réduit aussi la valeur des crédits fédéraux, dont le crédit pour dividendes."
+   ],
+   refs:["LIR art. 120(2)","Loi sur les arrangements fiscaux entre le gouvernement fédéral et les provinces, art. 27"],
+   liens:[["Loi de l'impôt sur le revenu",L.lir]] },
+
+ { id:"reer", titre:"REER : plafond, déduction et retraits", regimes:["part"], cat:"Épargne enregistrée",
+   mots:"reer régime enregistré d'épargne-retraite plafond 33 810 35 390 18 % revenu gagné cotisation excédentaire rap reep retenue facteur d'équivalence 1er mars 2027",
+   resume:"Plafond 2026 : 18 % du revenu gagné de 2025, jusqu'à 33 810 $, moins le facteur d'équivalence, plus les droits inutilisés.",
+   points:[
+     "Plafond REER : 33 810 $ pour 2026 et 35 390 $ pour 2027.",
+     "Date limite des cotisations déductibles pour 2026 : 1er mars 2027 (60 premiers jours de l'année suivante).",
+     "Cotisation excédentaire : tolérance de 2 000 $, puis pénalité de 1 % par mois sur l'excédent.",
+     "Retraits imposables. Retenue au Québec : 19 % (jusqu'à 5 000 $), 24 % (5 000 $ à 15 000 $), 29 % (au-delà), parts fédérale et québécoise réunies.",
+     "Régime d'accession à la propriété (RAP) et régime d'encouragement à l'éducation permanente (REEP) : retraits sans impôt, remboursables.",
+     "Le budget fédéral 2026 lance une consultation sur la fusion des règles du REER et du FERR (proposé)."
+   ],
+   refs:["LIR art. 146","LIR art. 146(5)","LIR art. 146.01 (RAP)","LIR art. 204.1","LI art. 922"],
+   liens:[["Plafonds REER, CELI et autres (ARC)",L.arcPlafonds]] },
+
+ { id:"celi", titre:"CELI : droits de cotisation et retraits", regimes:["part"], cat:"Épargne enregistrée",
+   mots:"celi compte d'épargne libre d'impôt 7 000 109 000 droits cumulatifs retrait cotisation excédentaire 1 % non déductible",
+   resume:"Plafond 2026 : 7 000 $. Droits cumulatifs de 109 000 $ depuis 2009 pour une personne admissible depuis le début.",
+   points:[
+     "Cotisations non déductibles ; revenus et retraits non imposables, au fédéral comme au Québec.",
+     "Les droits inutilisés se reportent indéfiniment. Un retrait recrée des droits le 1er janvier de l'année suivante.",
+     "Admissibilité dès 18 ans, résident du Canada avec un NAS valide.",
+     "Cotisation excédentaire : impôt de 1 % par mois sur l'excédent.",
+     "Attention aux activités de placement assimilables à l'exploitation d'une entreprise : le revenu peut devenir imposable."
+   ],
+   refs:["LIR art. 146.2","LIR art. 207.01 et s.","LI art. 935.20 et s."],
+   liens:[["Plafonds REER, CELI et autres (ARC)",L.arcPlafonds]] },
+
+ { id:"celiapp", titre:"CELIAPP : épargne pour une première propriété", regimes:["part"], cat:"Épargne enregistrée",
+   mots:"celiapp compte d'épargne libre d'impôt pour l'achat d'une première propriété 8 000 40 000 premier acheteur 15 ans déductible",
+   resume:"8 000 $ par an, 40 000 $ à vie. Cotisations déductibles et retrait admissible non imposable.",
+   points:[
+     "Plafond annuel de 8 000 $ ; report maximal de 8 000 $ de droits inutilisés (donc jusqu'à 16 000 $ dans une année).",
+     "Plafond à vie de 40 000 $.",
+     "Cotisations déductibles ; retrait admissible pour l'achat d'une première habitation non imposable.",
+     "Le compte doit être fermé au plus tard à la fin de la 15e année suivant son ouverture ; le solde peut être transféré au REER sans impôt.",
+     "Le Québec s'est harmonisé avec ce régime."
+   ],
+   refs:["LIR art. 146.6","LI art. 935.30 et s."],
+   liens:[["Plafonds REER, CELI et autres (ARC)",L.arcPlafonds]] },
+
+ { id:"gains", titre:"Gains en capital : taux d'inclusion et pertes", regimes:["part","soc"], cat:"Placements",
+   mots:"gain en capital taux d'inclusion 50 % moitié deux tiers annulation perte en capital report prix de base rajusté",
+   resume:"Le taux d'inclusion reste de 50 % : la hausse aux deux tiers a été annulée le 21 mars 2025.",
+   points:[
+     "Gain en capital imposable = 50 % du gain (particuliers, sociétés et fiducies).",
+     "La hausse proposée aux deux tiers (budget 2024), reportée au 1er janvier 2026, a été annulée par le gouvernement le 21 mars 2025.",
+     "Pertes en capital nettes : report rétrospectif de 3 ans et prospectif illimité, uniquement contre des gains en capital imposables.",
+     "Gain = produit de disposition − prix de base rajusté − frais de disposition.",
+     "Au Québec, la règle d'inclusion est harmonisée avec le fédéral."
+   ],
+   refs:["LIR art. 38","LIR art. 39","LIR art. 40","LIR art. 111(1)b)"],
+   liens:[["Annulation de la hausse (premier ministre)",L.pmGains]] },
+
+ { id:"residence", titre:"Résidence principale", regimes:["part"], cat:"Placements",
+   mots:"résidence principale exemption désignation vente maison chalet formule 1 + années déclaration annexe 3 tp-274",
+   resume:"Le gain sur la vente d'une résidence principale peut être entièrement exonéré grâce à la désignation.",
+   points:[
+     "Une seule propriété par unité familiale peut être désignée pour une année donnée.",
+     "Formule d'exemption : gain × (1 + nombre d'années désignées) ÷ nombre d'années de propriété.",
+     "La disposition doit être déclarée (annexe 3 au fédéral, formulaire TP-274 au Québec), sinon l'exemption peut être refusée ou une pénalité imposée.",
+     "Logement revendu dans les 12 mois de l'acquisition : profit généralement imposable comme revenu d'entreprise (règle anti-revente), sauf exceptions.",
+     "Changement d'usage (location) : choix possibles pour reporter la disposition réputée."
+   ],
+   refs:["LIR art. 40(2)b)","LIR art. 54 « résidence principale »","LIR art. 12(12) (revente)","LI art. 271","LI art. 274"],
+   liens:[["Loi de l'impôt sur le revenu",L.lir]] },
+
+ { id:"ecgc", titre:"Exonération cumulative des gains en capital", regimes:["part"], cat:"Placements",
+   mots:"exonération cumulative des gains en capital ecgc déduction pour gains en capital 1 250 000 actions admissibles de petite entreprise aape agricole pêche incitatif canadien à la croissance",
+   resume:"1 250 000 $ pour les actions admissibles de petite entreprise et les biens agricoles ou de pêche admissibles.",
+   points:[
+     "Plafond porté à 1,25 M$ pour les dispositions après le 24 juin 2024 ; le Québec s'est harmonisé.",
+     "Actions admissibles de petite entreprise : critères de détention de 24 mois et d'utilisation des actifs (90 % au moment de la vente, 50 % pendant 24 mois).",
+     "Peut déclencher l'impôt minimum de remplacement et réduire la déduction en cas de perte nette cumulative sur placements.",
+     "Proposé (budget fédéral du 5 novembre 2026) : Incitatif canadien à la croissance, exonération jusqu'à 15 M$ sur certaines actions de petites entreprises émises à partir du jour du budget."
+   ],
+   refs:["LIR art. 110.6","LIR art. 110.6(2.1)","LI art. 726.7 et s.","LI art. 726.7.1"],
+   liens:[["Budget fédéral 2026 (résumé BNC)",L.bncBudget2026]] },
+
+ { id:"dividendes", titre:"Dividendes : majoration et crédit d'impôt", regimes:["part","soc"], cat:"Placements",
+   mots:"dividende déterminé non déterminé ordinaire majoration 38 % 15 % crédit d'impôt pour dividendes 15,02 % 9,03 % 11,70 % 3,42 % 2,69 % intégration",
+   resume:"Déterminés : majoration de 38 %. Non déterminés : majoration de 15 %. Le crédit québécois sur les non déterminés baissera en 2027.",
+   points:[
+     "Fédéral : crédit de 15,0198 % (déterminés) et de 9,0301 % (non déterminés) du dividende majoré.",
+     "Québec : crédit de 11,70 % (déterminés) et de 3,42 % (non déterminés) du dividende majoré.",
+     "Québec : le crédit pour dividendes non déterminés passe à 2,69 % pour les dividendes reçus après le 31 décembre 2026, en contrepartie de la hausse de la DPE (bulletin 2026-3).",
+     "Dividende déterminé : payé à partir du revenu imposé au taux général (compte de revenu à taux général pour une SPCC).",
+     "Taux marginaux maximaux au Québec (2026) : environ 40,1 % (déterminés) et 48,7 % (non déterminés)."
+   ],
+   refs:["LIR art. 82(1)","LIR art. 121","LIR art. 89(1) « dividende déterminé »","LI art. 497","LI art. 767"],
+   liens:[["Bulletin d'information 2026-3 (Finances Québec)",L.finQcBul20263]] },
+
+ { id:"autonome", titre:"Travailleur autonome : revenu et dépenses d'entreprise", regimes:["part"], cat:"Entreprise",
+   mots:"travailleur autonome revenu d'entreprise dépenses déductibles bureau à domicile 18(12) déduction pour amortissement dpa rrq double cotisation 15 juin tp-80 t2125",
+   resume:"Le revenu d'entreprise est le bénéfice ; les dépenses engagées pour gagner un revenu sont déductibles, sauf les dépenses personnelles.",
+   points:[
+     "Bénéfice calculé selon les principes commerciaux reconnus, sous réserve des règles de la Loi.",
+     "Dépenses déductibles si engagées pour gagner un revenu ; les dépenses personnelles et les dépenses en capital ne le sont pas (ces dernières via la déduction pour amortissement).",
+     "Bureau à domicile : déductible seulement s'il est le principal lieu d'affaires, ou utilisé exclusivement et régulièrement pour rencontrer des clients ; la déduction ne peut créer une perte (report possible).",
+     "Cotisations RRQ des deux parts (employé et employeur), dont une partie est déductible.",
+     "Déclaration : 15 juin pour le particulier et son conjoint ; le solde reste payable au 30 avril.",
+     "Formulaires : T2125 (fédéral) et TP-80 (Québec)."
+   ],
+   refs:["LIR art. 9(1)","LIR art. 18(1)a) et h)","LIR art. 18(12)","LIR art. 20(1)a)","LI art. 80","LI art. 130","LI art. 175.4 à 175.6"],
+   liens:[["Loi de l'impôt sur le revenu",L.lir]] },
+
+ { id:"auto", titre:"Automobile : dépenses et avantages", regimes:["part","soc"], cat:"Entreprise",
+   mots:"automobile voiture de tourisme plafond intérêts location déduction pour amortissement catégorie 10.1 registre kilométrage avantage droit d'usage frais de fonctionnement",
+   resume:"Les dépenses d'automobile sont limitées par des plafonds annuels et réparties selon l'usage d'affaires.",
+   points:[
+     "Voiture de tourisme : plafonds sur le coût amortissable (catégorie 10.1), les intérêts et les frais de location, fixés chaque année par Finances Canada.",
+     "Déduction proportionnelle à l'usage d'affaires : tenez un registre des kilomètres.",
+     "Employé : un avantage imposable (droit d'usage et frais de fonctionnement) s'applique si l'employeur fournit le véhicule.",
+     "Vérifiez les plafonds de l'année visée avant de calculer."
+   ],
+   refs:["LIR art. 13(7)g)","LIR art. 67.2","LIR art. 67.3","LIR art. 6(1)e) et k)","LI art. 421.5"],
+   liens:[["Loi de l'impôt sur le revenu",L.lir]] },
+
+ { id:"dpe", titre:"SPCC et déduction pour petite entreprise", regimes:["soc"], cat:"Sociétés",
+   mots:"spcc société privée sous contrôle canadien déduction pour petite entreprise dpe plafond des affaires 500 000 9 % 2,2 % 3,2 % 5 500 heures revenu passif 50 000",
+   resume:"Premiers 500 000 $ de revenu d'entreprise exploitée activement : 9 % au fédéral et 2,2 % au Québec (années commençant après le 29 avril 2026).",
+   points:[
+     "Fédéral : taux de 9 % sur le revenu admissible jusqu'au plafond des affaires de 500 000 $, partagé entre sociétés associées.",
+     "Le plafond fédéral diminue de 5 $ par dollar de revenu de placement total ajusté au-delà de 50 000 $ ; il est nul à 150 000 $.",
+     "Québec : taux de 3,2 % réduit à 2,2 % pour les années d'imposition commençant après le 29 avril 2026 (taux combiné de 11,2 %).",
+     "Québec : la DPE exige au moins 5 500 heures rémunérées (année courante, ou année précédente avec les sociétés associées), réduction linéaire entre 5 000 et 5 500 heures ; exception pour les sociétés des secteurs primaire et manufacturier.",
+     "Québec : autres conditions inchangées (capital versé d'au plus 10 M$, revenu de placement total ajusté d'au plus 50 000 $).",
+     "Entreprise de prestation de services personnels : aucune DPE, taux fédéral de 33 %."
+   ],
+   refs:["LIR art. 125(1)","LIR art. 125(2) (plafond)","LIR art. 125(5.1)","LIR art. 125(7) « SPCC »","LI art. 771.2.1.2 et s."],
+   liens:[["Hausse de la DPE (Revenu Québec)",L.rqDpe],["Bulletin 2026-3 (Finances Québec)",L.finQcBul20263]] },
+
+ { id:"societes", titre:"Taux des sociétés et revenus de placement", regimes:["soc"], cat:"Sociétés",
+   mots:"impôt des sociétés taux général 15 % 11,5 % 26,5 % abattement 10 % réduction générale 13 % revenu de placement 38,67 % 50,17 % impôt en main remboursable imrtd partie iv 38,33 %",
+   resume:"Taux général combiné au Québec : 26,5 % (15 % + 11,5 %). Revenu de placement d'une SPCC : 50,17 %, en partie remboursable.",
+   points:[
+     "Fédéral : 38 % − abattement provincial de 10 % − réduction générale de 13 % = 15 %.",
+     "Québec : taux général de 11,5 %.",
+     "Revenu de placement d'une SPCC : 38,67 % au fédéral (dont 30,67 % remboursable au versement de dividendes) et 11,5 % au Québec.",
+     "Dividendes de portefeuille reçus par une société privée : impôt de la partie IV de 38,33 %, remboursable.",
+     "Production de la déclaration (T2 et CO-17) : dans les 6 mois suivant la fin de l'exercice ; solde dû dans les 2 mois (3 mois pour certaines SPCC)."
+   ],
+   refs:["LIR art. 123","LIR art. 123.3","LIR art. 123.4","LIR art. 124","LIR art. 129","LIR art. 186","LI art. 771"],
+   liens:[["Loi de l'impôt sur le revenu",L.lir],["Loi sur les impôts (LégisQuébec)",L.li]] },
+
+ { id:"imr", titre:"Impôt minimum de remplacement (IMR)", regimes:["part"], cat:"Taux et crédits",
+   mots:"impôt minimum de remplacement imr 20,5 % exemption gains en capital dons d'actions abris fiscaux report 7 ans",
+   resume:"Le taux fédéral est de 20,5 % depuis 2024, avec une exemption liée au seuil de la quatrième tranche d'imposition.",
+   points:[
+     "Calcul parallèle sur un revenu imposable modifié ; on paie le plus élevé de l'impôt régulier et de l'IMR.",
+     "Fédéral : taux de 20,5 % et exemption indexée correspondant au début de la quatrième tranche d'imposition.",
+     "Situations à risque : gros gains en capital, déduction pour gains en capital, dons de titres, certaines déductions.",
+     "L'IMR payé est récupérable sur les 7 années suivantes.",
+     "Le Québec a son propre IMR, harmonisé en partie (bulletin 2026-3)."
+   ],
+   refs:["LIR art. 127.5 et s.","LIR art. 120.2 (report)","LI art. 776.42 et s."],
+   liens:[["Loi de l'impôt sur le revenu",L.lir]] },
+
+ { id:"echeances", titre:"Déclarations, échéances et acomptes provisionnels", regimes:["part","soc"], cat:"Administration",
+   mots:"date limite 30 avril 15 juin acomptes provisionnels 3 000 1 800 15 mars 15 juin 15 septembre 15 décembre t2 co-17 six mois budget 2026 15 mai 7 500",
+   resume:"Particuliers : 30 avril (15 juin pour les travailleurs autonomes). Acomptes si l'impôt net à payer dépasse le seuil.",
+   points:[
+     "Particuliers : déclaration et paiement au 30 avril ; travailleurs autonomes et conjoints : déclaration au 15 juin, paiement au 30 avril.",
+     "Acomptes provisionnels des particuliers : 15 mars, 15 juin, 15 septembre et 15 décembre si l'impôt net dépasse 3 000 $ (1 800 $ pour les résidents du Québec au fédéral, et 1 800 $ au Québec) pour l'année courante et l'une des deux précédentes.",
+     "Sociétés : déclaration dans les 6 mois suivant la fin de l'exercice ; acomptes mensuels ou trimestriels.",
+     "Proposé (budget fédéral 2026) : date de production et de paiement reportée au 15 mai à partir de l'année 2027 ; seuil des acomptes porté à 7 500 $ (4 500 $ au Québec) à partir de 2028.",
+     "Les mesures fédérales proposées doivent être confirmées par le Québec pour s'appliquer à la LI."
+   ],
+   refs:["LIR art. 150(1)","LIR art. 156","LIR art. 156.1","LIR art. 157","LI art. 1000","LI art. 1026","LI art. 1027"],
+   liens:[["Budget fédéral 2026 (résumé BNC)",L.bncBudget2026]] },
+
+ { id:"cotisation", titre:"Cotisations, oppositions et divulgations volontaires", regimes:["part","soc"], cat:"Administration",
+   mots:"nouvelle cotisation délai de prescription 3 ans 4 ans avis d'opposition 90 jours un an renonciation divulgation volontaire cour canadienne de l'impôt cour du québec",
+   resume:"Nouvelle cotisation : généralement 3 ans (particuliers et SPCC). Opposition : 90 jours, ou un an après l'échéance de production pour un particulier.",
+   points:[
+     "Période normale de nouvelle cotisation : 3 ans après l'avis initial (particuliers et SPCC), 4 ans pour les autres sociétés ; pas de limite en cas de fausse déclaration par négligence ou fraude.",
+     "Opposition au fédéral : 90 jours après l'avis ; pour un particulier, le plus tard de ce délai et d'un an après la date d'échéance de production.",
+     "Québec : avis d'opposition dans les 90 jours (LAF), puis contestation à la Cour du Québec.",
+     "Proposé (budget fédéral 2026) : délai d'opposition porté à un an pour tous, pour les avis envoyés à partir de trois mois après la sanction royale.",
+     "Divulgations volontaires : programmes distincts à l'ARC et à Revenu Québec."
+   ],
+   refs:["LIR art. 152(3.1)","LIR art. 152(4)","LIR art. 165(1)","LIR art. 169","LI art. 1010","LAF art. 93.1.1"],
+   liens:[["Avis d'opposition (Revenu Québec)",L.rqOpposition],["Loi sur l'administration fiscale",L.laf],["Cour canadienne de l'impôt",L.cci]] },
+
+ { id:"dons", titre:"Dons, frais médicaux et crédit pour personnes handicapées", regimes:["part"], cat:"Taux et crédits",
+   mots:"dons de bienfaisance 15 % 29 % 33 % frais médicaux 3 % crédit d'impôt pour personnes handicapées ciph 10 341 t2201",
+   resume:"Dons : 15 % sur les premiers 200 $, puis 29 % ou 33 % au fédéral. Frais médicaux au-delà d'un seuil. CIPH : 10 341 $ en 2026.",
+   points:[
+     "Dons au fédéral : 15 % sur les premiers 200 $, 29 % au-delà (33 % sur la partie provenant d'un revenu imposé à 33 %). Plafond général de 75 % du revenu net ; report de 5 ans.",
+     "Frais médicaux : crédit sur l'excédent du moins élevé de 3 % du revenu net et d'un montant fixe indexé.",
+     "Crédit d'impôt pour personnes handicapées (fédéral) : montant de 10 341 $ en 2026 (réduction d'impôt jusqu'à 1 448 $), certificat T2201 requis.",
+     "Mise à jour économique du printemps 2026 : accès facilité au CIPH à compter de 2026.",
+     "Le Québec a ses propres crédits (dons, frais médicaux remboursables, personne ayant une déficience)."
+   ],
+   refs:["LIR art. 118.1","LIR art. 118.2","LIR art. 118.3","LI art. 752.0.10.1 et s.","LI art. 752.0.11","LI art. 752.0.14"],
+   liens:[["Loi de l'impôt sur le revenu",L.lir]] }
+];
+
+/* Tables 2026 */
+const FED = [[58523,.14],[117045,.205],[181440,.26],[258482,.29],[Infinity,.33]];
+const QC = [[54345,.14],[108680,.19],[132245,.24],[Infinity,.2575]];
+const FED_MPB = { max:16452, min:14829, from:181440, to:258482 };
+const QC_MPB = 18952;
+const ABATT = 0.165;
+const DIV = { fed:{ det:[.38,.150198], nondet:[.15,.090301] }, qc:{ det:[.38,.117], nondet:[.15,.0342] } };
+
+const NOUVEAUTES = [
+  { date:"21 mars 2025", regime:"part", titre:"Annulation de la hausse du taux d'inclusion des gains en capital", texte:"Le taux d'inclusion demeure de 50 % ; la hausse aux deux tiers, reportée au 1er janvier 2026, ne s'appliquera pas.", lien:["Communiqué du premier ministre",L.pmGains] },
+  { date:"1er janvier 2026", regime:"part", titre:"Taux fédéral de la première tranche à 14 %", texte:"Après 14,5 % pour 2025 (15 % jusqu'au 30 juin 2025), le taux est de 14 % pour toute l'année 2026 ; les crédits non remboursables sont calculés à ce taux.", lien:["Rapport du ministère des Finances",L.finCanTaux14] },
+  { date:"18 mars 2026", regime:"part", titre:"Budget du Québec 2026-2027", texte:"Aucun changement aux taux des particuliers. Revenu Québec pourra produire automatiquement la déclaration de certains particuliers à faible revenu à compter de l'année 2026.", lien:["Publications des Finances du Québec",L.finQcPub] },
+  { date:"28 avril 2026", regime:"part", titre:"Mise à jour économique fédérale du printemps", texte:"Aucun changement de taux. Accès facilité au crédit d'impôt pour personnes handicapées à compter de 2026 ; exonération permanente pour les fiducies collectives des employés.", lien:["Loi de l'impôt sur le revenu",L.lir] },
+  { date:"29 avril 2026", regime:"soc", titre:"Québec : taux de la DPE réduit de 3,2 % à 2,2 %", texte:"Pour les années d'imposition commençant après le 29 avril 2026. En contrepartie, le crédit pour dividendes non déterminés passe de 3,42 % à 2,69 % pour les dividendes reçus après le 31 décembre 2026.", lien:["Bulletin d'information 2026-3",L.finQcBul20263] },
+  { date:"5 novembre 2026", regime:"part", titre:"Budget fédéral 2026 (mesures proposées)", texte:"Production et paiement au 15 mai dès l'année 2027 ; seuil des acomptes à 7 500 $ (4 500 $ au Québec) dès 2028 ; délai d'opposition d'un an ; Incitatif canadien à la croissance (jusqu'à 15 M$) ; crédit pour proche aidant remboursable dès 2027 ; seuil du T1135 à 200 000 $. Aucun changement de taux.", lien:["Résumé du budget (BNC)",L.bncBudget2026] }
+];
+
+const SOURCES = [
+  ["Loi de l'impôt sur le revenu (L.R.C. 1985, ch. 1, 5e suppl.)", L.lir, "Texte officiel, Justice Canada."],
+  ["Loi sur les impôts (RLRQ, c. I-3)", L.li, "Texte officiel, LégisQuébec."],
+  ["Loi sur l'administration fiscale (RLRQ, c. A-6.002)", L.laf, "Cotisations, oppositions et pénalités au Québec."],
+  ["Taux d'imposition des particuliers (ARC)", L.arcTaux, "Tranches et taux fédéraux de l'année en cours."],
+  ["Taux d'imposition (Revenu Québec)", L.rqTaux, "Tables d'imposition du Québec."],
+  ["Plafonds REER, CELI et régimes de retraite (ARC)", L.arcPlafonds, "Plafonds annuels des régimes enregistrés."],
+  ["Nouvelles fiscales de Revenu Québec", L.rqNouvelles, "Annonces et précisions administratives."],
+  ["Publications du ministère des Finances du Québec", L.finQcPub, "Bulletins d'information et budgets."],
+  ["CanLII", L.canlii, "Jurisprudence de la Cour canadienne de l'impôt et de la Cour du Québec."],
+  ["Cour canadienne de l'impôt", L.cci, "Appels en matière d'impôt fédéral."]
+];
+
+/* ================= UTILITAIRES ================= */
+const $ = s => document.querySelector(s);
+const esc = s => String(s).replace(/[&<>"']/g, c => ({ "&":"&amp;","<":"&lt;",">":"&gt;",'"':"&quot;","'":"&#39;" }[c]));
+const norm = s => String(s).toLowerCase().normalize("NFD").replace(/[̀-ͯ]/g, "");
+const money = n => n.toLocaleString("fr-CA", { style:"currency", currency:"CAD" });
+const pct = (n, d) => (n * 100).toLocaleString("fr-CA", { minimumFractionDigits: d ?? 2, maximumFractionDigits: d ?? 2 }) + " %";
+const round2 = n => Math.round((n + Number.EPSILON) * 100) / 100;
+const store = {
+  get(k, d) { try { const v = localStorage.getItem(k); return v ? JSON.parse(v) : d; } catch (e) { return d; } },
+  set(k, v) { try { localStorage.setItem(k, JSON.stringify(v)); } catch (e) {} }
+};
+
+/* ================= NAVIGATION ================= */
+const VIEWS = ["recherche","assistant","calculateur","taux","nouveautes","sources"];
+function route() {
+  const h = location.hash.replace("#", "");
+  const v = VIEWS.includes(h) ? h : "recherche";
+  VIEWS.forEach(n => { $("#v-" + n).hidden = n !== v; });
+  document.querySelectorAll("nav a").forEach(a => {
+    if (a.dataset.view === v) a.setAttribute("aria-current", "page"); else a.removeAttribute("aria-current");
+  });
+}
+window.addEventListener("hashchange", route);
+
+/* ================= RECHERCHE ================= */
+const CATS = [...new Set(FICHES.map(f => f.cat))];
+let activeCat = "";
+FICHES.forEach(f => { f._h = norm([f.titre, f.mots, f.resume, f.cat, ...f.points, ...f.refs].join(" ")); });
+function terms(q) { return norm(q).split(/[\s,;]+/).filter(t => t.length > 1 && !["la","le","les","de","des","du","et","en","un","une","au","aux","sur","pour","art","article"].includes(t)); }
+function score(f, ts) {
+  if (!ts.length) return 1;
+  let s = 0;
+  for (const t of ts) {
+    if (!f._h.includes(t)) return 0;
+    if (norm(f.titre).includes(t)) s += 5;
+    if (norm(f.mots).includes(t)) s += 3;
+    s += 1;
+  }
+  return s;
+}
+function highlight(text, ts) {
+  const src = norm(text); let ranges = [];
+  ts.filter(t => t.length >= 3).forEach(t => {
+    let i = 0, idx;
+    while ((idx = src.indexOf(t, i)) !== -1) { ranges.push([idx, idx + t.length]); i = idx + t.length; }
+  });
+  if (!ranges.length) return esc(text);
+  ranges.sort((a, b) => a[0] - b[0]);
+  const merged = [];
+  ranges.forEach(r => { const m = merged[merged.length - 1]; if (m && r[0] <= m[1]) m[1] = Math.max(m[1], r[1]); else merged.push(r.slice()); });
+  let res = "", last = 0;
+  merged.forEach(([a, b]) => { res += esc(text.slice(last, a)) + "<mark>" + esc(text.slice(a, b)) + "</mark>"; last = b; });
+  return res + esc(text.slice(last));
+}
+function search(q, regime, cat) {
+  const ts = terms(q);
+  return FICHES.map(f => ({ f, s: score(f, ts) }))
+    .filter(x => x.s > 0 && (!regime || x.f.regimes.includes(regime)) && (!cat || x.f.cat === cat))
+    .sort((a, b) => b.s - a.s).map(x => x.f);
+}
+function renderChips() {
+  const all = [["", "Tous les thèmes"], ...CATS.map(c => [c, c])];
+  $("#chips").innerHTML = all.map(([v, l]) => `<button type="button" class="chip" data-cat="${esc(v)}" aria-pressed="${v === activeCat}">${esc(l)}</button>`).join("");
+}
+function renderCards() {
+  const q = $("#q").value, regime = $("#regime").value;
+  const res = search(q, regime, activeCat);
+  const ts = terms(q);
+  $("#count").textContent = res.length + (res.length > 1 ? " fiches" : " fiche") + (q ? " pour « " + q + " »" : "");
+  if (!res.length) {
+    $("#cards").innerHTML = `<div class="empty">Aucune fiche ne correspond. Essayez un autre mot-clé, ou posez la question à l'<a href="#assistant" id="to-ai">assistant</a>.</div>`;
+    const a = $("#to-ai"); if (a) a.addEventListener("click", () => { $("#ask-q").value = q; });
+    return;
+  }
+  $("#cards").innerHTML = res.map(f => `
+    <details class="card" id="fiche-${f.id}" ${ts.length && res.length <= 3 ? "open" : ""}>
+      <summary>
+        <div class="card-head">
+          <span class="card-title">${highlight(f.titre, ts)}</span>
+          ${f.regimes.includes("part") ? '<span class="tag part">Particuliers</span>' : ""}
+          ${f.regimes.includes("soc") ? '<span class="tag soc">Sociétés</span>' : ""}
+          <span class="tag cat">${esc(f.cat)}</span>
+        </div>
+        <div class="card-sum">${highlight(f.resume, ts)}</div>
+      </summary>
+      <div class="card-body">
+        <ul>${f.points.map(p => `<li>${highlight(p, ts)}</li>`).join("")}</ul>
+        <div class="refs">${f.refs.map(r => `<span class="ref">${esc(r)}</span>`).join("")}</div>
+        <div class="links">${f.liens.map(([t, u]) => `<a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a>`).join("")}</div>
+        <div class="card-actions"><button type="button" class="btn ghost" data-ask="${f.id}">Poser une question sur ce sujet</button></div>
+      </div>
+    </details>`).join("");
+}
+$("#q").addEventListener("input", () => { renderCards(); store.set("q-impot", $("#q").value); });
+$("#regime").addEventListener("change", renderCards);
+$("#chips").addEventListener("click", e => { const b = e.target.closest(".chip"); if (!b) return; activeCat = b.dataset.cat; renderChips(); renderCards(); });
+$("#cards").addEventListener("click", e => {
+  const b = e.target.closest("[data-ask]"); if (!b) return;
+  const f = FICHES.find(x => x.id === b.dataset.ask);
+  $("#ask-q").value = "Concernant « " + f.titre + " » : ";
+  location.hash = "assistant";
+  setTimeout(() => { const t = $("#ask-q"); t.focus(); t.setSelectionRange(t.value.length, t.value.length); }, 50);
+});
+
+/* ================= ASSISTANT ================= */
+const EXEMPLES = [
+  "Je suis travailleur autonome au Québec. Puis-je déduire une partie de mon loyer pour un bureau à domicile ?",
+  "Vaut-il mieux cotiser au REER ou au CELI avec un revenu imposable de 70 000 $ au Québec ?",
+  "Comment est imposé un dividende non déterminé reçu par un résident du Québec en 2027 ?",
+  "Ma SPCC québécoise a 3 000 heures rémunérées. A-t-elle droit à la déduction pour petite entreprise au Québec ?"
+];
+$("#examples").innerHTML = EXEMPLES.map((e, i) => `<button type="button" class="chip" data-ex="${i}">${esc(e.length > 60 ? e.slice(0, 58) + "…" : e)}</button>`).join("");
+$("#examples").addEventListener("click", e => { const b = e.target.closest("[data-ex]"); if (b) $("#ask-q").value = EXEMPLES[+b.dataset.ex]; });
+let sampleFn = null, controller = null;
+function mdToHtml(md) {
+  const lines = esc(md).split("\n"); let html = "", list = null;
+  const inline = s => s.replace(/\*\*(.+?)\*\*/g, "<strong>$1</strong>").replace(/`([^`]+)`/g, "<code>$1</code>")
+    .replace(/\[([^\]]+)\]\((https?:\/\/[^\s)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
+  const close = () => { if (list) { html += `</${list}>`; list = null; } };
+  for (const raw of lines) {
+    const l = raw.trimEnd(); let m;
+    if (/^#{1,4}\s/.test(l)) { close(); html += `<h3>${inline(l.replace(/^#{1,4}\s/, ""))}</h3>`; }
+    else if ((m = l.match(/^\s*[-*•]\s+(.*)/))) { if (list !== "ul") { close(); html += "<ul>"; list = "ul"; } html += `<li>${inline(m[1])}</li>`; }
+    else if ((m = l.match(/^\s*\d+[.)]\s+(.*)/))) { if (list !== "ol") { close(); html += "<ol>"; list = "ol"; } html += `<li>${inline(m[1])}</li>`; }
+    else if (!l.trim()) { close(); }
+    else { close(); html += `<p>${inline(l)}</p>`; }
+  }
+  close(); return html;
+}
+function ficheText(f) {
+  return `### ${f.titre}\n${f.resume}\n${f.points.map(p => "- " + p).join("\n")}\nRéférences : ${f.refs.join(" ; ")}\nLiens : ${f.liens.map(l => l[0] + " " + l[1]).join(" ; ")}`;
+}
+function buildPrompt(q, ctx) {
+  return `Tu es un assistant de recherche en impôt sur le revenu canadien et québécois : Loi de l'impôt sur le revenu (LIR, fédérale) et Loi sur les impôts (LI, Québec), pour les particuliers et les sociétés. L'utilisateur est un professionnel qui fait sa propre recherche. Date du jour : ${DERNIERE_MISE_A_JOUR}. Année d'imposition de référence : 2026.
+
+Règles :
+- Réponds en français, de façon précise et technique.
+- Limite-toi à l'impôt sur le revenu. Si la question porte sur les taxes de vente (TPS/TVQ) ou un autre sujet, dis-le brièvement.
+- Appuie-toi d'abord sur les fiches de référence ci-dessous. Si tu ajoutes des éléments hors fiches, signale qu'ils sont à vérifier.
+- Cite les articles de loi seulement si tu es raisonnablement certain du numéro ; sinon, écris « article à confirmer ».
+- Traite séparément le fédéral et le Québec lorsque les règles diffèrent.
+- Distingue les mesures en vigueur des mesures seulement proposées.
+- Si des faits manquent, nomme-les et donne la réponse pour chaque hypothèse plausible. Montre les calculs quand il y en a.
+- N'invente jamais d'URL : utilise seulement les liens présents dans les fiches.
+
+Format (Markdown, titres de niveau 3) :
+### Réponse courte
+### Analyse
+### Références législatives
+### Sources à consulter
+### Points à vérifier
+
+FICHES DE RÉFÉRENCE :
+${ctx.length ? ctx.map(ficheText).join("\n\n") : "(aucune fiche pertinente trouvée)"}
+
+QUESTION :
+${q}`;
+}
+function renderHistory() {
+  const h = store.get("hist-impot", []);
+  $("#history").innerHTML = h.length ? `<h3>Questions récentes</h3>` + h.map((x, i) => `<button type="button" data-h="${i}">${esc(x.q.length > 110 ? x.q.slice(0, 108) + "…" : x.q)}</button>`).join("") : "";
+}
+$("#history").addEventListener("click", e => {
+  const b = e.target.closest("[data-h]"); if (!b) return;
+  const x = store.get("hist-impot", [])[+b.dataset.h]; if (!x) return;
+  $("#ask-q").value = x.q; $("#answer").innerHTML = `<div class="answer">${mdToHtml(x.a)}</div>`;
+});
+async function ask() {
+  const q = $("#ask-q").value.trim();
+  if (!q) { $("#ask-status").textContent = "Écrivez d'abord une question."; return; }
+  if (!sampleFn) return;
+  const ctx = search(q, "", "").slice(0, 4);
+  controller = new AbortController();
+  $("#ask-btn").disabled = true; $("#ask-stop").hidden = false;
+  $("#ask-status").textContent = "Recherche en cours…";
+  $("#answer").innerHTML = `<div class="answer"><p class="note">Analyse de la question…</p></div>`;
+  const box = $("#answer .answer");
+  try {
+    const res = await sampleFn(buildPrompt(q, ctx), { modelTier: "complex", signal: controller.signal, cache: false, onText: ({ text }) => { box.innerHTML = mdToHtml(text); } });
+    box.innerHTML = mdToHtml(res.text) + (ctx.length ? `<p class="ctx">Fiches utilisées : ${ctx.map(f => `<a href="#recherche" data-goto="${f.id}">${esc(f.titre)}</a>`).join(", ")}</p>` : "");
+    const h = store.get("hist-impot", []); h.unshift({ q, a: res.text }); store.set("hist-impot", h.slice(0, 8)); renderHistory();
+    $("#ask-status").textContent = res.truncated ? "Réponse tronquée : précisez la question pour une réponse plus courte." : "";
+  } catch (err) {
+    if (err && err.code === "not_granted") $("#ask-status").textContent = "L'accès à Claude n'a pas été autorisé pour cette page.";
+    else if (err && err.code === "rate_limited") $("#ask-status").textContent = "Trop de demandes. Réessayez dans un moment.";
+    else if (err && err.name === "AbortError") { $("#ask-status").textContent = "Recherche arrêtée."; if (err.text) box.innerHTML = mdToHtml(err.text); }
+    else { $("#ask-status").textContent = "La recherche a échoué. Réessayez."; if (err && err.text) box.innerHTML = mdToHtml(err.text); }
+  } finally { $("#ask-btn").disabled = false; $("#ask-stop").hidden = true; controller = null; }
+}
+$("#ask-btn").addEventListener("click", ask);
+$("#ask-stop").addEventListener("click", () => { if (controller) controller.abort(); });
+$("#answer").addEventListener("click", e => {
+  const a = e.target.closest("[data-goto]"); if (!a) return;
+  e.preventDefault(); $("#q").value = ""; activeCat = ""; renderChips(); renderCards(); location.hash = "recherche";
+  setTimeout(() => { const d = $("#fiche-" + a.dataset.goto); if (d) { d.open = true; d.scrollIntoView({ block: "start" }); } }, 50);
+});
+(async () => {
+  $("#ask-btn").disabled = true;
+  try { if (window.claude && typeof window.claude.use === "function") sampleFn = await window.claude.use("sample"); } catch (e) { sampleFn = null; }
+  if (sampleFn) $("#ask-btn").disabled = false;
+  else $("#ai-notice").innerHTML = 'L\'assistant fonctionne seulement dans la version claude.ai (connexion à votre compte Claude requise)' + (URL_CLAUDE ? ' : <a href="' + URL_CLAUDE + '" target="_blank" rel="noopener">ouvrir la version avec assistant ↗</a>' : '') + '. Ici, utilisez l\'onglet Recherche, le calculateur et les sources officielles.';
+})();
+
+/* ================= CALCULATEUR ================= */
+function bracketTax(income, table) {
+  let tax = 0, low = 0, marg = table[0][1];
+  for (const [top, rate] of table) {
+    if (income > low) { tax += (Math.min(income, top) - low) * rate; marg = rate; }
+    low = top;
+  }
+  return { tax, marg };
+}
+function fedMPB(income) {
+  if (income <= FED_MPB.from) return FED_MPB.max;
+  if (income >= FED_MPB.to) return FED_MPB.min;
+  return FED_MPB.max - (FED_MPB.max - FED_MPB.min) * (income - FED_MPB.from) / (FED_MPB.to - FED_MPB.from);
+}
+function impotParticulier(income, qc) {
+  const f = bracketTax(income, FED);
+  const fedBase = Math.max(0, f.tax - fedMPB(income) * 0.14);
+  const abatt = qc ? fedBase * ABATT : 0;
+  const fedNet = fedBase - abatt;
+  const q = qc ? bracketTax(income, QC) : { tax: 0, marg: 0 };
+  const qcNet = qc ? Math.max(0, q.tax - QC_MPB * 0.14) : 0;
+  return { fedBase, abatt, fedNet, qcNet, total: fedNet + qcNet, mf: f.marg, mq: q.marg };
+}
+function renderPart() {
+  const inc = Math.max(0, parseFloat($("#p-rev").value) || 0);
+  const qc = $("#p-qc").checked;
+  const r = impotParticulier(inc, qc);
+  // taux marginal effectif (différence finie, tient compte de la réduction du MPB fédéral)
+  const r2 = impotParticulier(inc + 100, qc);
+  const mFed = (r2.fedNet - r.fedNet) / 100, mQc = (r2.qcNet - r.qcNet) / 100;
+  const k = qc ? (1 - ABATT) : 1;
+  const divRate = (t) => {
+    const [gu, cf] = DIV.fed[t], [gq, cq] = DIV.qc[t];
+    const fed = Math.max(0, (1 + gu) * (mFed / k) - (1 + gu) * cf) * k;
+    const que = qc ? Math.max(0, (1 + gq) * mQc - (1 + gq) * cq) : 0;
+    return [fed, que];
+  };
+  $("#p-kpis").innerHTML = `
+    <div class="kpi"><span>Impôt total</span><strong>${money(round2(r.total))}</strong></div>
+    <div class="kpi"><span>Taux moyen</span><strong>${inc ? pct(r.total / inc) : "—"}</strong></div>
+    <div class="kpi"><span>Taux marginal</span><strong>${pct(mFed + mQc)}</strong></div>`;
+  let rows = `<tr><th>Élément</th><th class="num">Fédéral</th><th class="num">Québec</th></tr>`;
+  const fTab = bracketTax(inc, FED).tax, qTab = qc ? bracketTax(inc, QC).tax : 0;
+  rows += `<tr><td>Impôt selon la table</td><td class="num">${money(round2(fTab))}</td><td class="num">${qc ? money(round2(qTab)) : "—"}</td></tr>`;
+  rows += `<tr><td>Crédit personnel de base (14 %)</td><td class="num">− ${money(round2(fedMPB(inc) * .14))}</td><td class="num">${qc ? "− " + money(round2(QC_MPB * .14)) : "—"}</td></tr>`;
+  if (qc) rows += `<tr><td>Abattement du Québec (16,5 %)</td><td class="num">− ${money(round2(r.abatt))}</td><td class="num">—</td></tr>`;
+  rows += `<tr class="total"><td>Impôt à payer</td><td class="num">${money(round2(r.fedNet))}</td><td class="num">${qc ? money(round2(r.qcNet)) : "—"}</td></tr>`;
+  $("#p-out").innerHTML = rows;
+  const [dfF, dfQ] = divRate("det"), [dnF, dnQ] = divRate("nondet");
+  let m = `<tr><th>Type de revenu</th><th class="num">Fédéral</th><th class="num">Québec</th><th class="num">Total</th></tr>`;
+  const line = (n, a, b) => `<tr><td>${n}</td><td class="num">${pct(a)}</td><td class="num">${qc ? pct(b) : "—"}</td><td class="num"><strong>${pct(a + b)}</strong></td></tr>`;
+  m += line("Revenu ordinaire (salaire, intérêts)", mFed, mQc);
+  m += line("Gain en capital (inclusion de 50 %)", mFed / 2, mQc / 2);
+  m += line("Dividende déterminé", dfF, dfQ);
+  m += line("Dividende non déterminé", dnF, dnQ);
+  $("#p-marg").innerHTML = m;
+}
+function renderSoc() {
+  const ent = Math.max(0, parseFloat($("#s-ent").value) || 0);
+  const plaf = Math.min(500000, Math.max(0, parseFloat($("#s-plaf").value) || 0));
+  const plac = Math.max(0, parseFloat($("#s-plac").value) || 0);
+  const nouv = $("#s-annee").value === "new", heures = $("#s-heures").checked;
+  const petit = Math.min(ent, plaf), gen = ent - petit;
+  const qcPetitRate = heures ? (nouv ? .022 : .032) : .115;
+  const rows = [
+    ["Revenu admissible à la DPE", petit, .09, qcPetitRate],
+    ["Revenu au taux général", gen, .15, .115],
+    ["Revenu de placement", plac, .3867, .115]
+  ];
+  let fedT = 0, qcT = 0, html = `<tr><th>Revenu</th><th class="num">Montant</th><th class="num">Fédéral</th><th class="num">Québec</th><th class="num">Impôt</th></tr>`;
+  rows.forEach(([n, a, f, q]) => { fedT += a * f; qcT += a * q;
+    html += `<tr><td>${n}</td><td class="num">${money(a)}</td><td class="num">${pct(f)}</td><td class="num">${pct(q)}</td><td class="num">${money(round2(a * (f + q)))}</td></tr>`; });
+  html += `<tr class="total"><td>Total</td><td class="num">${money(ent + plac)}</td><td class="num">${money(round2(fedT))}</td><td class="num">${money(round2(qcT))}</td><td class="num">${money(round2(fedT + qcT))}</td></tr>`;
+  if (plac) html += `<tr><td colspan="5" class="note">Sur le revenu de placement, 30,67 % (fédéral) est ajouté à l'impôt en main remboursable et récupérable au versement de dividendes imposables.</td></tr>`;
+  if (!heures) html += `<tr><td colspan="5" class="note">Moins de 5 000 heures : pas de DPE au Québec (réduction linéaire entre 5 000 et 5 500 heures, non modélisée ici).</td></tr>`;
+  $("#s-out").innerHTML = html;
+  const tot = ent + plac;
+  $("#s-kpis").innerHTML = `
+    <div class="kpi"><span>Impôt total</span><strong>${money(round2(fedT + qcT))}</strong></div>
+    <div class="kpi"><span>Taux moyen</span><strong>${tot ? pct((fedT + qcT) / tot) : "—"}</strong></div>
+    <div class="kpi"><span>Taux combiné DPE</span><strong>${pct(.09 + qcPetitRate, 1)}</strong></div>`;
+}
+function setMode(m) {
+  $("#mode-part").setAttribute("aria-pressed", m === "part"); $("#mode-soc").setAttribute("aria-pressed", m === "soc");
+  $("#calc-part").hidden = m !== "part"; $("#calc-soc").hidden = m !== "soc";
+}
+$("#mode-part").addEventListener("click", () => setMode("part"));
+$("#mode-soc").addEventListener("click", () => setMode("soc"));
+["#p-rev","#p-qc"].forEach(s => $(s).addEventListener("input", renderPart));
+["#s-ent","#s-plaf","#s-plac","#s-annee","#s-heures"].forEach(s => $(s).addEventListener("input", renderSoc));
+
+/* ================= TAUX, NOUVEAUTÉS, SOURCES ================= */
+function tableRows(t) { let low = 0; return t.map(([top, r]) => { const s = top === Infinity ? `Plus de ${money(low).replace(",00", "")}` : `${money(low).replace(",00", "")} à ${money(top).replace(",00", "")}`; low = top; return [s, r]; }); }
+(() => {
+  const f = tableRows(FED), q = tableRows(QC);
+  let h = `<tr><th>Fédéral : revenu imposable</th><th class="num">Taux</th><th class="num">Taux net au Québec*</th><th>Québec : revenu imposable</th><th class="num">Taux</th></tr>`;
+  for (let i = 0; i < Math.max(f.length, q.length); i++) {
+    h += `<tr><td>${f[i] ? f[i][0] : ""}</td><td class="num">${f[i] ? pct(f[i][1]) : ""}</td><td class="num">${f[i] ? pct(f[i][1] * (1 - ABATT)) : ""}</td><td>${q[i] ? q[i][0] : ""}</td><td class="num">${q[i] ? pct(q[i][1]) : ""}</td></tr>`;
+  }
+  h += `<tr><td colspan="5" class="note">* Après l'abattement du Québec de 16,5 %.</td></tr>`;
+  $("#t-part").innerHTML = h;
+  const P = [
+    ["Montant personnel de base", "16 452 $ (14 829 $ au-delà de 258 482 $)", "18 952 $"],
+    ["Taux des crédits non remboursables", "14 %", "14 %"],
+    ["Plafond REER 2026", "33 810 $", "harmonisé"],
+    ["Plafond CELI 2026 (cumulatif depuis 2009)", "7 000 $ (109 000 $)", "harmonisé"],
+    ["CELIAPP (annuel / à vie)", "8 000 $ / 40 000 $", "harmonisé"],
+    ["Taux d'inclusion des gains en capital", "50 %", "50 %"],
+    ["Exonération cumulative des gains en capital", "1 250 000 $", "1 250 000 $"],
+    ["Majoration des dividendes (déterminés / non déterminés)", "38 % / 15 %", "38 % / 15 %"],
+    ["Crédit pour dividendes (déterminés / non déterminés)", "15,0198 % / 9,0301 %", "11,70 % / 3,42 % (2,69 % dès 2027)"],
+    ["Taux de l'IMR", "20,5 %", "propre au Québec"]
+  ];
+  $("#t-param").innerHTML = `<tr><th>Paramètre 2026</th><th>Fédéral</th><th>Québec</th></tr>` + P.map(r => `<tr><td>${r[0]}</td><td>${r[1]}</td><td>${r[2]}</td></tr>`).join("");
+  const S = [
+    ["Revenu admissible à la DPE (500 000 $)", "9 %", "2,2 % (3,2 % avant le 30 avril 2026)", "11,2 %"],
+    ["Revenu d'entreprise au taux général", "15 %", "11,5 %", "26,5 %"],
+    ["Revenu de placement d'une SPCC", "38,67 %", "11,5 %", "50,17 %"],
+    ["Entreprise de prestation de services personnels", "33 %", "11,5 %", "44,5 %"]
+  ];
+  $("#t-soc").innerHTML = `<tr><th>Type de revenu</th><th class="num">Fédéral</th><th class="num">Québec</th><th class="num">Combiné</th></tr>` + S.map(r => `<tr><td>${r[0]}</td><td class="num">${r[1]}</td><td class="num">${r[2]}</td><td class="num"><strong>${r[3]}</strong></td></tr>`).join("");
+})();
+$("#timeline").innerHTML = NOUVEAUTES.map(n => `
+  <div class="tl"><time>${esc(n.date)}</time>
+    <div><div class="card-head"><strong>${esc(n.titre)}</strong>${n.regime === "soc" ? '<span class="tag soc">Sociétés</span>' : '<span class="tag part">Particuliers</span>'}</div>
+    <p>${esc(n.texte)}</p><p><a href="${esc(n.lien[1])}" target="_blank" rel="noopener">${esc(n.lien[0])} ↗</a></p></div>
+  </div>`).join("");
+$("#srcgrid").innerHTML = SOURCES.map(([t, u, d]) => `<div class="src"><a href="${esc(u)}" target="_blank" rel="noopener">${esc(t)} ↗</a><span>${esc(d)}</span></div>`).join("");
+
+/* ================= VERSION EN LIGNE ================= */
+$("#stamp").textContent = "Contenu à jour au " + DERNIERE_MISE_A_JOUR;
+if (URL_EN_LIGNE && location.protocol === "file:" && location.hash !== "#local" && navigator.onLine) {
+  $("#redirect-banner").hidden = false;
+  const t = setTimeout(() => { location.replace(URL_EN_LIGNE); }, 1500);
+  $("#stay-local").addEventListener("click", () => { clearTimeout(t); $("#redirect-banner").hidden = true; });
+}
+
+/* ================= DÉMARRAGE ================= */
+$("#q").value = store.get("q-impot", "");
+renderChips(); renderCards(); renderHistory(); renderPart(); renderSoc(); route();
+</script>
+</body>
+</html>
